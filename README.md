@@ -23,7 +23,7 @@ NOTE: The water draw scripts are compatible with Python2.
     - You should be able to log in without issue after entering this line.
 
 ### Conformance Test Procedure
-NOTE: The following scripts will run from three windows via TMUX.
+NOTE: The following scripts will run from three panes via TMUX.
 It is important to run programs from RPI desktop so that they may
 run continuously. Running programs from SSH may have issues with
 continuous connectivity.
