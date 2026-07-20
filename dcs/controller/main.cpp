@@ -147,21 +147,55 @@ int main()
 		switch (c)
 		{
 			case 'c':
-				device->basicCriticalPeakEvent(0).get();
-				break;
+    				cout << "Sending CRITICAL PEAK EVENT..." << endl;
+    				device->basicCriticalPeakEvent(0).get();
+
+    				sleep(15);
+
+    				cout << "Querying operational state after CRITICAL PEAK EVENT..." << endl;
+    				device->basicQueryOperationalState().get();
+   				break;
 
 			case 'e':
-				device->basicEndShed(0).get();
-				break;
+    				cout << "Sending END SHED..." << endl;
+    				device->basicEndShed(0).get();
+
+    				sleep(15);
+
+    				cout << "Querying operational state after END SHED..." << endl;
+    				device->basicQueryOperationalState().get();
+    				break;
 
 			case 'g':
-				device->basicGridEmergency(0).get();
-				break;
+    				cout << "Sending GRID EMERGENCY..." << endl;
+    				device->basicGridEmergency(0).get();
+
+    				sleep(15);
+
+    				cout << "Querying operational state after GRID EMERGENCY..." << endl;
+    				device->basicQueryOperationalState().get();
+    				break;
 
 			case 'l':
-				device->basicLoadUp(0).get();
-				break;
+    				cout << "Sending LOAD UP..." << endl;
+    				device->basicLoadUp(0).get();
 
+    				sleep(15);
+
+    				cout << "Querying operational state after LOAD UP..." << endl;
+		    		device->basicQueryOperationalState().get();
+   				break;
+
+			case 's':
+    				cout << "Sending SHED..." << endl;
+    				device->basicShed(0).get();
+
+    				sleep(15);
+
+    				cout << "Querying operational state after SHED..." << endl;
+    				device->basicQueryOperationalState().get();
+    				break;
+			
 			case '\n':
 				break;
 
@@ -173,16 +207,6 @@ int main()
 			case 'q':
 				shutdown = true;
 				break;
-
-			case 's':
-    			cout << "Sending SHED..." << endl;
-    			device->basicShed(0).get();
-
-    			sleep(1);
-
-    			cout << "Querying operational state after SHED..." << endl;
-    			device->basicQueryOperationalState().get();
-    			break;
 
 			default:
 				LOG(WARNING) << "invalid command";
