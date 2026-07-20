@@ -21,6 +21,118 @@
 
 using namespace std;
 
+namespace
+{
+const char* messageCodeName(cea2045::MessageCode code)
+{
+	switch (code)
+	{
+	case cea2045::MessageCode::NONE:
+		return "NONE";
+	case cea2045::MessageCode::MAX_PAYLOAD_REQUEST:
+		return "MAX_PAYLOAD_REQUEST";
+	case cea2045::MessageCode::MAX_PAYLOAD_RESPONSE:
+		return "MAX_PAYLOAD_RESPONSE";
+	case cea2045::MessageCode::SUPPORT_DATALINK_MESSAGES:
+		return "SUPPORT_DATALINK_MESSAGES";
+	case cea2045::MessageCode::SUPPORT_INTERMEDIATE_MESSAGES:
+		return "SUPPORT_INTERMEDIATE_MESSAGES";
+	case cea2045::MessageCode::BASIC_CRITICAL_PEAK_EVENT_REQUEST:
+		return "BASIC_CRITICAL_PEAK_EVENT_REQUEST";
+	case cea2045::MessageCode::BASIC_END_SHED_REQUEST:
+		return "BASIC_END_SHED_REQUEST";
+	case cea2045::MessageCode::BASIC_SHED_REQUEST:
+		return "BASIC_SHED_REQUEST";
+	case cea2045::MessageCode::BASIC_GRID_EMERGENCY_REQUEST:
+		return "BASIC_GRID_EMERGENCY_REQUEST";
+	case cea2045::MessageCode::BASIC_LOAD_UP_REQUEST:
+		return "BASIC_LOAD_UP_REQUEST";
+	case cea2045::MessageCode::BASIC_OUTSIDE_COMM_CONNECTION_STATUS_MESSAGE:
+		return "BASIC_OUTSIDE_COMM_CONNECTION_STATUS_MESSAGE";
+	case cea2045::MessageCode::BASIC_PRESENT_RELATIVE_PRICE_REQUEST:
+		return "BASIC_PRESENT_RELATIVE_PRICE_REQUEST";
+	case cea2045::MessageCode::BASIC_NEXT_RELATIVE_PRICE_REQUEST:
+		return "BASIC_NEXT_RELATIVE_PRICE_REQUEST";
+	case cea2045::MessageCode::BASIC_QUERY_OPERATIONAL_STATE_REQUEST:
+		return "BASIC_QUERY_OPERATIONAL_STATE_REQUEST";
+	case cea2045::MessageCode::BASIC_POWER_LEVEL:
+		return "BASIC_POWER_LEVEL";
+	case cea2045::MessageCode::DEVICE_INFORMATION_REQUEST:
+		return "DEVICE_INFORMATION_REQUEST";
+	case cea2045::MessageCode::GET_COMMODITY_REQUEST:
+		return "GET_COMMODITY_REQUEST";
+	case cea2045::MessageCode::GET_TEMPERATURE_OFFSET:
+		return "GET_TEMPERATURE_OFFSET";
+	case cea2045::MessageCode::GET_SETPOINTS_REQUEST:
+		return "GET_SETPOINTS_REQUEST";
+	case cea2045::MessageCode::GET_PRESENT_TEMPERATURE_REQUEST:
+		return "GET_PRESENT_TEMPERATURE_REQUEST";
+	case cea2045::MessageCode::SET_TEMPERATURE_OFFSET_REQUEST:
+		return "SET_TEMPERATURE_OFFSET_REQUEST";
+	case cea2045::MessageCode::SET_SETPOINTS_REQUEST:
+		return "SET_SETPOINTS_REQUEST";
+	case cea2045::MessageCode::SET_ENERGY_PRICE_REQUEST:
+		return "SET_ENERGY_PRICE_REQUEST";
+	case cea2045::MessageCode::START_CYCLING_REQUEST:
+		return "START_CYCLING_REQUEST";
+	case cea2045::MessageCode::TERMINATE_CYCLING_REQUEST:
+		return "TERMINATE_CYCLING_REQUEST";
+	case cea2045::MessageCode::CUSTOMER_OVERRIDE_RESPONSE:
+		return "CUSTOMER_OVERRIDE_RESPONSE";
+	}
+
+	return "UNKNOWN_MESSAGE";
+}
+
+const char* linkNakReasonName(cea2045::LinkLayerNakCode reason)
+{
+	switch (reason)
+	{
+	case cea2045::LinkLayerNakCode::NO_REASON:
+		return "No reason";
+	case cea2045::LinkLayerNakCode::INVALID_BYTE:
+		return "Invalid byte";
+	case cea2045::LinkLayerNakCode::INVALID_LENGTH:
+		return "Invalid length";
+	case cea2045::LinkLayerNakCode::CHECKSUM_ERROR:
+		return "Checksum error";
+	case cea2045::LinkLayerNakCode::RESERVED:
+		return "Reserved";
+	case cea2045::LinkLayerNakCode::MESSAGE_TIMEOUT:
+		return "Message timeout";
+	case cea2045::LinkLayerNakCode::UNSUPPORTED_MESSAGE_TYPE:
+		return "Unsupported message type";
+	case cea2045::LinkLayerNakCode::REQUEST_NOT_SUPPORTED:
+		return "Request not supported";
+	case cea2045::LinkLayerNakCode::NONE:
+		return "Unknown link NAK reason";
+	}
+
+	return "Unknown link NAK reason";
+}
+
+const char* appNakReasonName(unsigned char reason)
+{
+	switch (reason)
+	{
+	case 0x00:
+		return "No reason given";
+	case 0x01:
+		return "Opcode1 not supported";
+	case 0x02:
+		return "Opcode2 invalid";
+	case 0x03:
+		return "Busy";
+	case 0x04:
+		return "Invalid message length";
+	case 0x05:
+		return "Customer override is in effect";
+	default:
+		return "Reserved or unknown application NAK reason";
+	}
+}
+}
+
 UCMImpl::UCMImpl()
 {
 	m_sgdMaxPayload = cea2045::MaxPayloadLengthCode::LENGTH2;
@@ -108,7 +220,7 @@ void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* messag
 
 void UCMImpl::processAckReceived(cea2045::MessageCode messageCode)
 {
-	LOG(INFO) << "ack received: " << (int)messageCode;
+	LOG(INFO) << "link ACK received for " << messageCodeName(messageCode);
 
 	switch (messageCode)
 	{
@@ -130,7 +242,9 @@ void UCMImpl::processAckReceived(cea2045::MessageCode messageCode)
 
 void UCMImpl::processNakReceived(cea2045::LinkLayerNakCode nak, cea2045::MessageCode messageCode)
 {
-	LOG(WARNING) << "nak received";
+	LOG(WARNING) << "link NAK received for " << messageCodeName(messageCode)
+			 << ". Reason: " << linkNakReasonName(nak)
+			 << " (0x" << std::hex << static_cast<int>(nak) << std::dec << ")";
 
 	if (nak == cea2045::LinkLayerNakCode::UNSUPPORTED_MESSAGE_TYPE)
 	{
@@ -173,7 +287,9 @@ void UCMImpl::processAppAckReceived(cea2045::cea2045Basic* message)
 
 void UCMImpl::processAppNakReceived(cea2045::cea2045Basic* message)
 {
-	LOG(INFO) << "app nak received. Reason "<< (int)message->opCode2;
+	LOG(WARNING) << "application NAK received. Reason: "
+			 << appNakReasonName(message->opCode2)
+			 << " (0x" << std::hex << static_cast<int>(message->opCode2) << std::dec << ")";
 }
 
 //======================================================================================
