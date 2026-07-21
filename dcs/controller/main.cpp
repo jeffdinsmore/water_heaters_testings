@@ -68,7 +68,7 @@ int main()
         cout<<"l- Loadup\n";
         cout<<"o- Outside Communication\n";
         cout<<"s- Shed\n";
-		cout<<"v- Enable advanced load up capability"
+		cout<<"v- Enable advanced load up capability";
         cout<<"q- Quit\n";
         cout<<"enter choice: ";
 		char c = getchar();
