@@ -376,6 +376,14 @@ void ProcessMessageUCM::processIntermediateMessage(ILinkLayerCommSend *linkLayer
 
 			break;
 		}
+		case IntermediateTypeCode::ADVANCED_LOAD_UP_RESPONSE:
+		{
+    		cea2045IntermediateResponse *response = (cea2045IntermediateResponse *)message;
+
+    		m_ucm->processSetAdvancedLoadUpResponse(response);
+    		linkLayer->sendLinkLayerAck();
+    		break;
+		}
 
 		default:
 			linkLayer->sendLinkLayerNak(LinkLayerNakCode::REQUEST_NOT_SUPPORTED);

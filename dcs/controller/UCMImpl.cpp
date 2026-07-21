@@ -18,7 +18,6 @@
 
 #include <fstream>
 
-
 using namespace std;
 
 namespace
@@ -37,6 +36,10 @@ const char* messageCodeName(cea2045::MessageCode code)
 		return "SUPPORT_DATALINK_MESSAGES";
 	case cea2045::MessageCode::SUPPORT_INTERMEDIATE_MESSAGES:
 		return "SUPPORT_INTERMEDIATE_MESSAGES";
+	case cea2045::MessageCode::ADVANCED_LOAD_UP_REQUEST:
+    	return "ADVANCED_LOAD_UP_REQUEST";
+	case cea2045::MessageCode::SET_CAPABILITY_BIT_REQUEST:
+		return "SET_CAPABILITY_BIT_REQUEST";
 	case cea2045::MessageCode::BASIC_CRITICAL_PEAK_EVENT_REQUEST:
 		return "BASIC_CRITICAL_PEAK_EVENT_REQUEST";
 	case cea2045::MessageCode::BASIC_END_SHED_REQUEST:
@@ -131,6 +134,39 @@ const char* appNakReasonName(unsigned char reason)
 		return "Reserved or unknown application NAK reason";
 	}
 }
+
+const char* commodityCodeName(unsigned char code)
+{
+	switch (code)
+	{
+	case 0:
+		return "Electricity consumed (W & W-hr)";
+	case 1:
+		return "Electricity produced (W & W-hr)";
+	case 2:
+		return "Natural gas";
+	case 3:
+		return "Water";
+	case 4:
+		return "Natural gas";
+	case 5:
+		return "Water";
+	case 6:
+		return "Total energy storage/take capacity (W-hr)";
+	case 7:
+		return "Present energy storage/take capacity (W-hr)";
+	case 8:
+		return "Rated max consumption level electricity (W)";
+	case 9:
+		return "Rated max production level electricity (W)";
+	case 10:
+		return "Advanced load up total energy storage/take capacity (W-hr)";
+	case 11:
+		return "Advanced load up present energy storage/take capacity (W-hr)";
+	default:
+		return "Reserved commodity code";
+	}
+}
 }
 
 UCMImpl::UCMImpl()
@@ -206,9 +242,14 @@ void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* messag
 	for (int x = 0; x < count; x++)
 	{
 		cea2045::cea2045CommodityData *data = message->getCommodityData(x);
+		const unsigned char rawCommodityCode = data->commodityCode;
+		const unsigned char commodityCode = rawCommodityCode & 0x7F;
+		const bool isMeasured = (rawCommodityCode & 0x80) != 0;
 
 		LOG(INFO) << "commodity data: " << x;
-		LOG(INFO) << "        code: " << (int)data->commodityCode;
+		LOG(INFO) << "  commodity code: " << static_cast<int>(commodityCode)
+				  << " - " << commodityCodeName(commodityCode);
+		LOG(INFO) << "           source: " << (isMeasured ? "Measured" : "Estimated");
 		LOG(INFO) << "  cumulative: " << data->getCumulativeAmount();
 		LOG(INFO) << "   inst rate: " << data->getInstantaneousRate();
 		out<<(int)data->commodityCode<<", ";
@@ -220,7 +261,7 @@ void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* messag
 
 void UCMImpl::processAckReceived(cea2045::MessageCode messageCode)
 {
-	LOG(INFO) << "link ACK received for " << messageCodeName(messageCode);
+	LOG(INFO) << "link ACK received: " << messageCodeName(messageCode);
 
 	switch (messageCode)
 	{

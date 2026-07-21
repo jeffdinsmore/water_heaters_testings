@@ -140,6 +140,15 @@ public:
 			unsigned char dutyCycle, unsigned char startRandomizationMinutes, unsigned char endRandomizationMintues,
 			unsigned char criticality) = 0;
 	virtual std::future<ResponseCodes> intermediateTerminateCycling(unsigned int eventID, unsigned char endRandomizationInMinutes) = 0;
+	virtual std::future<ResponseCodes> intermediateSetAdvancedLoadUp(
+    	unsigned short duration,
+    	unsigned short value,
+    	unsigned char units
+	) = 0;
+	virtual std::future<ResponseCodes> intermediateSetCapabilityBit(
+    	unsigned char bitNumber,
+    	bool enabled
+	) = 0;
 
 	virtual std::future<ResponseCodes> basicCriticalPeakEvent(unsigned char eventDuration) = 0;
 	virtual std::future<ResponseCodes> basicEndShed(unsigned char durationToNextEvent) = 0;

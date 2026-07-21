@@ -102,6 +102,7 @@
  */
 
 #include "CEA2045DeviceUCM.h"
+#include "message/SetAdvancedLoadUp.h"
 
 namespace cea2045 {
 
@@ -306,6 +307,29 @@ std::future<ResponseCodes> CEA2045DeviceUCM::querySuportDataLinkMessages()
 std::future<ResponseCodes> CEA2045DeviceUCM::querySuportIntermediateMessages()
 {
 	return CEA2045Device::querySuportIntermediateMessages();
+}
+
+std::future<ResponseCodes> CEA2045DeviceUCM::intermediateSetAdvancedLoadUp(
+    unsigned short duration,
+    unsigned short value,
+    unsigned char units)
+{
+    // std::cout << "CEA2045DeviceUCM::intermediateSetAdvancedLoadUp called" << std::endl;
+    auto setAdvancedLoadUp = new SetAdvancedLoadUp(
+        duration,
+        value,
+        units
+    );
+    return queueRequest(setAdvancedLoadUp);
+}
+
+std::future<ResponseCodes>
+CEA2045DeviceUCM::intermediateSetCapabilityBit(
+    unsigned char bitNumber,
+    bool enabled
+)
+{
+    return queueRequest(new SetCapabilityBit(bitNumber, enabled));
 }
 
 //======================================================================================

@@ -107,6 +107,8 @@
 #include "../processmessage/IUCM.h"
 #include "CEA2045Device.h"
 #include "ICEA2045DeviceUCM.h"
+#include "message/SetAdvancedLoadUp.h"
+#include "message/SetCapabilityBit.h"
 #include "message/Basic.h"
 #include "message/Intermediate.h"
 #include "message/SetEnergyPrice.h"
@@ -140,7 +142,15 @@ public:
 			unsigned char dutyCycle, unsigned char startRandomizationMinutes, unsigned char endRandomizationMintues,
 			unsigned char criticality);
 	std::future<ResponseCodes> intermediateTerminateCycling(unsigned int eventID, unsigned char endRandomizationInMinutes);
-
+	std::future<ResponseCodes> intermediateSetAdvancedLoadUp(
+    	unsigned short duration,
+    	unsigned short value,
+    	unsigned char units
+	);
+	std::future<ResponseCodes> intermediateSetCapabilityBit(
+    	unsigned char bitNumber,
+    	bool enabled
+	);
 	std::future<ResponseCodes> basicCriticalPeakEvent(unsigned char eventDuration);
 	std::future<ResponseCodes> basicEndShed(unsigned char durationToNextEvent);
 	std::future<ResponseCodes> basicGridEmergency(unsigned char eventDuration);

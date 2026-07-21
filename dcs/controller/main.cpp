@@ -27,9 +27,173 @@ INITIALIZE_EASYLOGGINGPP
 
 #include <cea2045/util/MSTimer.h>
 
-void perform_command(char cmd, shared_ptr<ICEA2045DeviceUCM> dev){
+void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev);
+void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev);
+
+int main()
+{
+	MSTimer timer;
+	bool shutdown = false;
+
+	CEA2045SerialPort sp("/dev/ttyUSB0");
+	UCMImpl ucm;
+	ResponseCodes responseCodes;
+
+	if (!sp.open())
+	{
+		LOG(ERROR) << "failed to open serial port: " << strerror(errno);
+		return 0;
+	}
+
+	//shared_ptr<ICEA2045DeviceUCM> device = make_shared<DeviceFactory::createUCM(&sp, &ucm)>();
+    //auto device = mak
+	//shared_ptr<ICEA2045DeviceUCM> device = make_shared<DeviceFactory::createUCM>(&sp,&ucm);
+    std::shared_ptr<ICEA2045DeviceUCM> device(DeviceFactory::createUCM(&sp,&ucm));
+    //device = make_shared<ICEA2045DeviceUCM>();
+    //device = DeviceFactory::createUCM(&sp,&ucm);
+
+	device->start();
+
+
+	LOG(INFO) << "starting commodity service...";
+    std::thread commodity(commodity_service_loop,device);
+    commodity.detach();
+    sleep(5);
+	while (!shutdown)
+	{
+        cout<<"a- Advanced Loadup\n";
+		cout<<"c- Critical Peak Event\n";
+        cout<<"e- End shed/Normal\n";
+        cout<<"g- Grid Emergency\n";
+        cout<<"l- Loadup\n";
+        cout<<"o- Outside Communication\n";
+        cout<<"s- Shed\n";
+        cout<<"q- Quit\n";
+        cout<<"enter choice: ";
+		char c = getchar();
+
+		switch (c)
+		{
+			case 'a':
+				{
+					// Values exactly matching spec example
+					unsigned short duration = 60;  // 0x3C
+					unsigned short value = 10;      // 5 x 100Wh = 0.5 kWh
+					unsigned char units = 0x03;    // 1000Wh units
+					
+					std::cout << "Advanced Load Up initiated with spec values..." << std::endl;
+					device->intermediateSetAdvancedLoadUp(duration, value, units).get();
+				}
+				break;
+
+			case 'c':
+				cout << "Sending CRITICAL PEAK EVENT..." << endl;
+				device->basicCriticalPeakEvent(0).get();
+				cout << "Loading..."<< endl;
+				sleep(15);
+
+				cout << "Querying operational state after CRITICAL PEAK EVENT..." << endl;
+				device->basicQueryOperationalState().get();
+   				break;
+
+			case 'e':
+				cout << "Sending END SHED..." << endl;
+				device->basicEndShed(0).get();
+				cout << "Loading..."<< endl;
+				sleep(15);
+
+				cout << "Querying operational state after END SHED..." << endl;
+				device->basicQueryOperationalState().get();
+				break;
+
+			case 'g':
+				cout << "Sending GRID EMERGENCY..." << endl;
+				device->basicGridEmergency(0).get();
+				cout << "Loading..."<< endl;
+				sleep(15);
+
+				cout << "Querying operational state after GRID EMERGENCY..." << endl;
+				device->basicQueryOperationalState().get();
+				break;
+
+			case 'l':
+				cout << "Sending LOAD UP..." << endl;
+				device->basicLoadUp(0).get();
+				cout << "Loading..."<< endl;
+				sleep(15);
+
+				cout << "Querying operational state after LOAD UP..." << endl;
+				device->basicQueryOperationalState().get();
+   				break;
+
+			case 'o':
+				device->basicOutsideCommConnectionStatus(OutsideCommuncatonStatusCode::Found);
+				break;
+
+			case 'p':
+				device->basicPowerLevel(63).get();		// approx 50%
+				break;
+			
+			case 'q':
+				shutdown = true;
+				break;
+
+			case 'r':
+				device->basicPresentRelativePrice(101).get();	// approx twice
+				break;
+
+			case 's':
+				cout << "Sending SHED..." << endl;
+				device->basicShed(0).get();
+				cout << "Loading..."<< endl;
+				sleep(15);
+
+				cout << "Querying operational state after SHED..." << endl;
+				device->basicQueryOperationalState().get();
+				break;
+			
+			case '\n':
+				break;
+			
+			case 'C':
+				device->intermediateGetCommodity().get();
+				break;
+
+			case 'O':
+				device->intermediateGetTemperatureOffset().get();
+				break;
+			
+			case 'S':
+				device->intermediateGetSetPoint().get();
+				break;
+
+			case 'T':
+				device->intermediateGetPresentTemperature().get();
+				break;
+			
+			default:
+				LOG(WARNING) << "invalid command";
+				break;
+		}
+	}
+
+	device->shutDown();
+
+	//delete (device);
+
+	return 0;
+
+
+}
+
+
+void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev){
     switch (tolower(cmd)){
-        case 's':
+		case 'a':
+			cout << "advanced load up"<< endl;
+			dev->intermediateSetAdvancedLoadUp(60, 5, 0x02).get();
+			break;
+		case 's':
             cout<<"shedding"<<endl;
 	    dev->basicShed(0);
             break;
@@ -57,7 +221,7 @@ void perform_command(char cmd, shared_ptr<ICEA2045DeviceUCM> dev){
 }
 
 
-void commodity_service_loop(shared_ptr<ICEA2045DeviceUCM> dev){
+void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
     fstream file;
     int t;
     time_t now;
@@ -102,123 +266,4 @@ void commodity_service_loop(shared_ptr<ICEA2045DeviceUCM> dev){
         dev->basicQueryOperationalState().get();
         sleep(60);
     }
-}
-int main()
-{
-	MSTimer timer;
-	bool shutdown = false;
-
-	CEA2045SerialPort sp("/dev/ttyUSB0");
-	UCMImpl ucm;
-	ResponseCodes responseCodes;
-
-	if (!sp.open())
-	{
-		LOG(ERROR) << "failed to open serial port: " << strerror(errno);
-		return 0;
-	}
-
-	//shared_ptr<ICEA2045DeviceUCM> device = make_shared<DeviceFactory::createUCM(&sp, &ucm)>();
-    //auto device = mak
-	//shared_ptr<ICEA2045DeviceUCM> device = make_shared<DeviceFactory::createUCM>(&sp,&ucm);
-    shared_ptr<ICEA2045DeviceUCM> device(DeviceFactory::createUCM(&sp,&ucm));
-    //device = make_shared<ICEA2045DeviceUCM>();
-    //device = DeviceFactory::createUCM(&sp,&ucm);
-
-	device->start();
-
-
-	LOG(INFO) << "starting commodity service...";
-    thread commodity(commodity_service_loop,device);
-    commodity.detach();
-    sleep(5);
-	while (!shutdown)
-	{
-        cout<<"c- CriticalPeakEvent\n";
-        cout<<"e- Endshed\n";
-        cout<<"g- GridEmergency\n";
-        cout<<"l- Loadup\n";
-        cout<<"o- OutsideCommunication\n";
-        cout<<"s- Shed\n";
-        cout<<"q- Quit\n";
-        cout<<"enter choice: ";
-		char c = getchar();
-
-		switch (c)
-		{
-			case 'c':
-    				cout << "Sending CRITICAL PEAK EVENT..." << endl;
-    				device->basicCriticalPeakEvent(0).get();
-					cout << "Loading..."<< endl;
-    				sleep(15);
-
-    				cout << "Querying operational state after CRITICAL PEAK EVENT..." << endl;
-    				device->basicQueryOperationalState().get();
-   				break;
-
-			case 'e':
-    				cout << "Sending END SHED..." << endl;
-    				device->basicEndShed(0).get();
-					cout << "Loading..."<< endl;
-    				sleep(15);
-
-    				cout << "Querying operational state after END SHED..." << endl;
-    				device->basicQueryOperationalState().get();
-    				break;
-
-			case 'g':
-    				cout << "Sending GRID EMERGENCY..." << endl;
-    				device->basicGridEmergency(0).get();
-					cout << "Loading..."<< endl;
-    				sleep(15);
-
-    				cout << "Querying operational state after GRID EMERGENCY..." << endl;
-    				device->basicQueryOperationalState().get();
-    				break;
-
-			case 'l':
-    				cout << "Sending LOAD UP..." << endl;
-    				device->basicLoadUp(0).get();
-					cout << "Loading..."<< endl;
-    				sleep(15);
-
-    				cout << "Querying operational state after LOAD UP..." << endl;
-		    		device->basicQueryOperationalState().get();
-   				break;
-
-			case 's':
-    				cout << "Sending SHED..." << endl;
-    				device->basicShed(0).get();
-					cout << "Loading..."<< endl;
-    				sleep(15);
-
-    				cout << "Querying operational state after SHED..." << endl;
-    				device->basicQueryOperationalState().get();
-    				break;
-			
-			case '\n':
-				break;
-
-			case 'o':
-				device->basicOutsideCommConnectionStatus(OutsideCommuncatonStatusCode::Found);
-				break;
-
-
-			case 'q':
-				shutdown = true;
-				break;
-
-			default:
-				LOG(WARNING) << "invalid command";
-				break;
-		}
-	}
-
-	device->shutDown();
-
-	//delete (device);
-
-	return 0;
-
-
 }

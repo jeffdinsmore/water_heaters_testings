@@ -136,6 +136,7 @@ public:
 	virtual void processSetSetpointsResponse(cea2045IntermediateResponse *message) = 0;
 	virtual void processStartCyclingResponse(cea2045IntermediateResponse *message) = 0;
 	virtual void processTerminateCyclingResponse(cea2045IntermediateResponse *message) = 0;
+	virtual void processSetAdvancedLoadUpResponse(cea2045IntermediateResponse *message) = 0;
 	virtual void processGetPresentTemperatureResponse(cea2045GetPresentTemperatureResponse *message) = 0;
 	virtual void processGetUTCTimeResponse(cea2045GetUTCTimeResponse *message) = 0;
 	virtual void processAckReceived(MessageCode messageCode) = 0;
