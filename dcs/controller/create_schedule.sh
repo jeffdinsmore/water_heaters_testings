@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Test events are written as "seconds after start,CTA-2045 command".
 # Commands: s=Shed, e=End Shed, l=Load Up, g=Grid Emergency,
-#           c=Critical Peak Event
+#           c=Critical Peak Event, o=Outside Communication Found
 EVENTS=(
   "0,o"
   "15,l"

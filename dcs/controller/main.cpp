@@ -136,10 +136,11 @@ int main()
 
 			case 'o':
 				cout << "Sending outside communication command..." << endl;
-				device->basicOutsideCommConnectionStatus(OutsideCommuncatonStatusCode::Found);
+				device->basicOutsideCommConnectionStatus(
+					OutsideCommuncatonStatusCode::Found).get();
 				cout << "Loading..."<< endl;
 				sleep(10);
-				cout << "Querying operational state after LOAD UP..." << endl;
+				cout << "Querying operational state after OUTSIDE COMMUNICATION..." << endl;
 				device->basicQueryOperationalState().get();
 				break;
 
@@ -228,23 +229,28 @@ void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev){
 			break;
 		case 's':
             cout<<"shedding"<<endl;
-	    dev->basicShed(0);
+	    dev->basicShed(0).get();
             break;
         case 'e':
-	    dev->basicEndShed(0);
+	    dev->basicEndShed(0).get();
             cout<<"endshedding"<<endl;
             break;
         case 'l':
             cout<<"loading up"<<endl;
-	    dev->basicLoadUp(0);
+	    dev->basicLoadUp(0).get();
             break;
         case 'g':
             cout<<"grid emergency"<<endl;
-	    dev->basicGridEmergency(0);
+	    dev->basicGridEmergency(0).get();
             break;
         case 'c':
             cout<<"critical peak event"<<endl;
-	    dev->basicCriticalPeakEvent(0);
+	    dev->basicCriticalPeakEvent(0).get();
+            break;
+		case 'o':
+			cout<<"outside communication found"<<endl;
+			dev->basicOutsideCommConnectionStatus(
+				OutsideCommuncatonStatusCode::Found).get();
             break;
 
         default:
