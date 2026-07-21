@@ -18,10 +18,31 @@
 
 #include <fstream>
 
+#include <sys/stat.h>
+
 using namespace std;
 
 namespace
 {
+const char* LOG_DIRECTORY = "logs";
+const char* CSV_LOG_PATH = "logs/log.csv";
+
+void ensureLogDirectoryExists()
+{
+	mkdir(LOG_DIRECTORY, 0755);
+}
+
+string currentDateTime()
+{
+	time_t now = time(NULL);
+	struct tm localTime;
+	localtime_r(&now, &localTime);
+
+	char timestamp[20];
+	strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &localTime);
+	return timestamp;
+}
+
 const char* messageCodeName(cea2045::MessageCode code)
 {
 	switch (code)
@@ -172,6 +193,7 @@ const char* commodityCodeName(unsigned char code)
 UCMImpl::UCMImpl()
 {
 	m_sgdMaxPayload = cea2045::MaxPayloadLengthCode::LENGTH2;
+	ensureLogDirectoryExists();
 }
 
 //======================================================================================
@@ -228,17 +250,14 @@ void UCMImpl::processDeviceInfoResponse(cea2045::cea2045DeviceInfoResponse* mess
 void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* message)
 {
 	LOG(INFO) << "commodity response received.  count: " << message->getCommodityDataCount();
-    time_t t = time(0);
-    // opeen file
-    ofstream out;
-    out.open("log.csv",ios_base::out|ios_base::app);
+	ofstream out(CSV_LOG_PATH, ios_base::out | ios_base::app);
+	if (!out.is_open())
+	{
+		LOG(ERROR) << "failed to open CSV log: " << CSV_LOG_PATH;
+	}
 
 	int count = message->getCommodityDataCount();
-
-
-        string ti = asctime((localtime(&t)));
-        ti.pop_back();
-	out<<ti<<", ";
+	out << currentDateTime();
 	for (int x = 0; x < count; x++)
 	{
 		cea2045::cea2045CommodityData *data = message->getCommodityData(x);
@@ -252,8 +271,10 @@ void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* messag
 		LOG(INFO) << "           source: " << (isMeasured ? "Measured" : "Estimated");
 		LOG(INFO) << "  cumulative: " << data->getCumulativeAmount();
 		LOG(INFO) << "   inst rate: " << data->getInstantaneousRate();
-		out<<(int)data->commodityCode<<", ";
-		out<<data->getCumulativeAmount()<<", "<<data->getInstantaneousRate()<<", ";
+		out << ',' << static_cast<int>(commodityCode)
+			<< ',' << (isMeasured ? "Measured" : "Estimated")
+			<< ',' << data->getCumulativeAmount()
+			<< ',' << data->getInstantaneousRate();
 	}
 }
 
@@ -310,10 +331,16 @@ void UCMImpl::processNakReceived(cea2045::LinkLayerNakCode nak, cea2045::Message
 
 void UCMImpl::processOperationalStateReceived(cea2045::cea2045Basic *message)
 {
-    ofstream out;
-    out.open("log.csv",ios_base::out|ios_base::app);
+	ofstream out(CSV_LOG_PATH, ios_base::out | ios_base::app);
 	LOG(INFO) << "operational state received: " << (int)message->opCode2;
-    out<<(int)message->opCode2<<"\n";
+	if (!out.is_open())
+	{
+		LOG(ERROR) << "failed to open CSV log: " << CSV_LOG_PATH;
+	}
+	else
+	{
+		out << ',' << static_cast<int>(message->opCode2) << '\n';
+	}
 	cout << "\nPress Enter for a list of commands\n";
 }
 
