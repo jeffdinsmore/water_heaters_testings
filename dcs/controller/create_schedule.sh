@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Test events are written as
-# "time after start,seconds adjustment,CTA-2045 command".
+# "time after start,seconds adjustment,CTA-2045 command,optional argument".
 #
 # Durations support hours, minutes, and seconds, for example:
 #   1h 30m
@@ -13,17 +13,17 @@ set -euo pipefail
 # Commands: s=Shed, e=End Shed, l=Load Up, g=Grid Emergency,
 #           c=Critical Peak Event, o=Outside Communication Found
 EVENTS=(
-  "0m,0,o"
-  "0m,15,l"
-  "20m,-15,o"
-  "20m,0,e"
-  "25m,0,g"
-  "1h 30m,-15,o"
-  "1h 30m,0,e"
-  "2h 30m,-15,o"
-  "2h 30m,0,s"
-  "4h 30m,-15,o"
-  "4h 30m,0,e"
+  "0m,0,o,"
+  "0m,15,l,"
+  "20m,-15,o,"
+  "20m,0,e,"
+  "25m,0,g,"
+  "1h 30m,-15,o,"
+  "1h 30m,0,e,"
+  "2h 30m,-15,o,"
+  "2h 30m,0,s,"
+  "4h 30m,-15,o,"
+  "4h 30m,0,e,"
 )
 
 duration_to_seconds() {
@@ -46,26 +46,26 @@ SCHEDULE_FILE="${SCRIPT_DIR}/schedule.csv"
 ARCHIVE_DIR="${SCRIPT_DIR}/schedule_history"
 NOW="$(date +%s)"
 
-echo "# time,command" > "${SCHEDULE_FILE}"
+echo "# time,command,argument" > "${SCHEDULE_FILE}"
 
 for event in "${EVENTS[@]}"; do
-  IFS=, read -r duration adjustment command <<< "${event}"
+  IFS=, read -r duration adjustment command argument <<< "${event}"
   offset="$(duration_to_seconds "${duration}")"
   timestamp="$((NOW + offset + adjustment))"
-  echo "${timestamp},${command}" >> "${SCHEDULE_FILE}"
+  echo "${timestamp},${command},${argument}" >> "${SCHEDULE_FILE}"
 done
 
 mkdir -p "${ARCHIVE_DIR}"
 ARCHIVE_FILE="${ARCHIVE_DIR}/schedule_$(date +%Y-%m-%d_%H-%M-%S).csv"
 
-echo "# scheduled time,command" > "${ARCHIVE_FILE}"
-while IFS=, read -r timestamp command; do
+echo "# scheduled time,command,argument" > "${ARCHIVE_FILE}"
+while IFS=, read -r timestamp command argument; do
   if [[ -z "${timestamp}" || "${timestamp}" == \#* ]]; then
     continue
   fi
 
   readable_time="$(date -d "@${timestamp}" '+%Y-%m-%d %I:%M %p')"
-  echo "${readable_time},${command}" >> "${ARCHIVE_FILE}"
+  echo "${readable_time},${command},${argument}" >> "${ARCHIVE_FILE}"
 done < "${SCHEDULE_FILE}"
 
 echo "Created ${SCHEDULE_FILE}:"

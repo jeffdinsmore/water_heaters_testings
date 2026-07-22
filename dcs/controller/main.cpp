@@ -17,6 +17,8 @@
 
 //#include <QCoreApplication>
 #include <iostream>
+#include <cctype>
+#include <sstream>
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
@@ -27,7 +29,7 @@ INITIALIZE_EASYLOGGINGPP
 
 #include <cea2045/util/MSTimer.h>
 
-void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev);
+void perform_command(char cmd, unsigned char argument, std::shared_ptr<ICEA2045DeviceUCM> dev);
 void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev);
 
 int main()
@@ -221,7 +223,7 @@ int main()
 }
 
 
-void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev){
+void perform_command(char cmd, unsigned char argument, std::shared_ptr<ICEA2045DeviceUCM> dev){
     switch (tolower(cmd)){
 		case 'a':
 			cout << "advanced load up"<< endl;
@@ -229,23 +231,23 @@ void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev){
 			break;
 		case 's':
             cout<<"shedding"<<endl;
-	    dev->basicShed(0).get();
+	    dev->basicShed(argument).get();
             break;
         case 'e':
-	    dev->basicEndShed(0).get();
+	    dev->basicEndShed(argument).get();
             cout<<"endshedding"<<endl;
             break;
         case 'l':
             cout<<"loading up"<<endl;
-	    dev->basicLoadUp(0).get();
+	    dev->basicLoadUp(argument).get();
             break;
         case 'g':
             cout<<"grid emergency"<<endl;
-	    dev->basicGridEmergency(0).get();
+	    dev->basicGridEmergency(argument).get();
             break;
         case 'c':
             cout<<"critical peak event"<<endl;
-	    dev->basicCriticalPeakEvent(0).get();
+	    dev->basicCriticalPeakEvent(argument).get();
             break;
 		case 'o':
 			cout<<"outside communication found"<<endl;
@@ -262,10 +264,8 @@ void perform_command(char cmd, std::shared_ptr<ICEA2045DeviceUCM> dev){
 
 void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
     fstream file;
-    int t;
     time_t now;
-    char cmd,comma;
-    string header,lines;
+    string header,line,lines;
     while (1)
     {
 	file.open("schedule.csv", ofstream::in);
@@ -273,22 +273,80 @@ void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
 		cout<<"FAILED TO OPEN SCHEDULE.CSV"<<endl;
 	// prime the buffer -- skip the header
 	getline(file,header);
-	lines = header+ "\n";
-	while (file>>t>>comma>>cmd)
+	lines = "# time,command,argument\n";
+	while (getline(file,line))
 	{
+	    if (line.empty() || line[0] == '#')
+	        continue;
+
+	    string timestampText, commandText, argumentText;
+	    stringstream row(line);
+	    getline(row, timestampText, ',');
+	    getline(row, commandText, ',');
+	    getline(row, argumentText, ',');
+	    const auto trim = [](string& value)
+	    {
+	        while (!value.empty() && isspace(static_cast<unsigned char>(value.front())))
+	            value.erase(value.begin());
+	        while (!value.empty() && isspace(static_cast<unsigned char>(value.back())))
+	            value.pop_back();
+	    };
+	    trim(timestampText);
+	    trim(commandText);
+	    trim(argumentText);
+
+	    time_t t;
+	    unsigned long argumentValue = 0;
+	    try
+	    {
+	        size_t timestampEnd = 0;
+	        const long long timestampValue = stoll(timestampText, &timestampEnd);
+	        if (timestampEnd != timestampText.size())
+	            throw invalid_argument("timestamp contains unexpected characters");
+	        t = static_cast<time_t>(timestampValue);
+	        if (!argumentText.empty())
+	        {
+	            size_t argumentEnd = 0;
+	            argumentValue = stoul(argumentText, &argumentEnd);
+	            if (argumentEnd != argumentText.size())
+	                throw invalid_argument("argument contains unexpected characters");
+	            if (argumentValue > 255)
+	                throw out_of_range("CTA argument exceeds one byte");
+	        }
+	    }
+	    catch (const exception& error)
+	    {
+	        LOG(ERROR) << "invalid schedule row retained: " << line
+	                   << " (" << error.what() << ")";
+	        lines += line + "\n";
+	        continue;
+	    }
+
+	    if (commandText.size() != 1 || string("aselgco").find(commandText[0]) == string::npos)
+	    {
+	        LOG(ERROR) << "invalid schedule command retained: " << line;
+	        lines += line + "\n";
+	        continue;
+	    }
+	    char cmd = commandText[0];
+	    unsigned char argument = static_cast<unsigned char>(argumentValue);
+
 		// grab time
 		time(&now);
 		if (now >= t)
 		{
 		    // passed & should act on it
-		    cout<<t<<comma<<cmd<<" (PASSED!)\n";
-		    perform_command(cmd,dev);
+		    cout<<t<<','<<cmd<<','<<argumentValue<<" (PASSED!)\n";
+		    perform_command(cmd,argument,dev);
 		}
 		else
 		{
 		    // did not pass, leave it be for the future
 		    cout<<t<<cmd<<" (STILL!)\n";
-		    lines+= to_string(t) + comma + cmd + "\n";
+		    lines += to_string(t) + ',' + cmd;
+		    if (!argumentText.empty())
+		        lines += ',' + argumentText;
+		    lines += "\n";
 		}
 	}
 	file.close();
