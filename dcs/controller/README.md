@@ -5,7 +5,8 @@ CTA-2045 device over the serial port configured in `main.cpp` (currently
 `/dev/ttyUSB0`).
 
 - `main.cpp` opens the serial connection, runs the command loop, and processes
-  scheduled commands.
+  scheduled commands. The schedule is checked once per second, independently
+  of the 60-second commodity and operational-state polling interval.
 - `UCMImpl.cpp` and `UCMImpl.h` handle responses received from the water heater.
 - `logs/cta_events.csv` records UTC timestamps for command dispatch and
   completion, link/application ACK or NAK callbacks, operational states, and

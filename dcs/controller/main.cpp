@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <thread>
+#include <chrono>
 
 //#include <QCoreApplication>
 #include <iostream>
@@ -320,8 +321,13 @@ void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
     fstream file;
     time_t now;
     string header,line,lines;
+    const chrono::seconds schedulerInterval(1);
+    const chrono::seconds commodityInterval(60);
+    chrono::steady_clock::time_point nextCommodityRead = chrono::steady_clock::now();
     while (1)
     {
+	bool scheduleChanged = false;
+	file.clear();
 	file.open("schedule.csv", ofstream::in);
 	if (!file.is_open())
 		cout<<"FAILED TO OPEN SCHEDULE.CSV"<<endl;
@@ -427,6 +433,7 @@ void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
 		if (now >= t)
 		{
 		    // passed & should act on it
+		    scheduleChanged = true;
 		    cout<<t<<','<<cmd<<','<<argumentValue<<" (PASSED!)\n";
 		    try
 		    {
@@ -453,7 +460,6 @@ void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
 		else
 		{
 		    // did not pass, leave it be for the future
-		    cout<<t<<cmd<<" (STILL!)\n";
 		    lines += to_string(t) + ',' + cmd;
 		    if (!argumentText.empty())
 		        lines += ',' + argumentText;
@@ -473,36 +479,54 @@ void commodity_service_loop(std::shared_ptr<ICEA2045DeviceUCM> dev){
 		}
 	}
 	file.close();
-	file.open("schedule.csv",ofstream::out);
-	if (!file.is_open())
-		cout<<"FAILED TO OPEN SCHEDULE.CSV"<<endl;
-	// rewrite the commands
-	file << lines<<endl;
-	file.close();
+	if (scheduleChanged)
+	{
+	    file.clear();
+	    file.open("schedule.csv",ofstream::out);
+	    if (!file.is_open())
+	    {
+	        cout<<"FAILED TO OPEN SCHEDULE.CSV FOR UPDATE"<<endl;
+	    }
+	    else
+	    {
+	        // Remove commands that were dispatched while retaining future rows.
+	        file << lines;
+	        file.close();
+	    }
+	}
 	// ------------------------------ end of scheduler ----------------------
-	// send routine commands (commodity read & op status)
-	// dev->intermediateGetDeviceInformation().get();
-	logCtaEvent("query_sent", "outbound", "get_commodity", "pending", "", "source=periodic");
-	try
+	// Commodity and operational-state polling use an independent 60-second
+	// clock. Scheduled commands are checked every second, including during
+	// the 59 seconds between periodic reads.
+	if (chrono::steady_clock::now() >= nextCommodityRead)
 	{
-	    ResponseCodes commodityResult = dev->intermediateGetCommodity().get();
-	    logCtaEvent("query_completed", "outbound", "get_commodity", responseCodeName(commodityResult.responesCode), "", "source=periodic");
-	}
-	catch (const exception& error)
-	{
-	    logCtaEvent("query_exception", "outbound", "get_commodity", "error", "", error.what());
-	}
+	    // dev->intermediateGetDeviceInformation().get();
+	    logCtaEvent("query_sent", "outbound", "get_commodity", "pending", "", "source=periodic");
+	    try
+	    {
+	        ResponseCodes commodityResult = dev->intermediateGetCommodity().get();
+	        logCtaEvent("query_completed", "outbound", "get_commodity", responseCodeName(commodityResult.responesCode), "", "source=periodic");
+	    }
+	    catch (const exception& error)
+	    {
+	        logCtaEvent("query_exception", "outbound", "get_commodity", "error", "", error.what());
+	    }
 
-	logCtaEvent("query_sent", "outbound", "query_operational_state", "pending", "", "source=periodic");
-	try
-	{
-	    ResponseCodes stateResult = dev->basicQueryOperationalState().get();
-	    logCtaEvent("query_completed", "outbound", "query_operational_state", responseCodeName(stateResult.responesCode), "", "source=periodic");
+	    logCtaEvent("query_sent", "outbound", "query_operational_state", "pending", "", "source=periodic");
+	    try
+	    {
+	        ResponseCodes stateResult = dev->basicQueryOperationalState().get();
+	        logCtaEvent("query_completed", "outbound", "query_operational_state", responseCodeName(stateResult.responesCode), "", "source=periodic");
+	    }
+	    catch (const exception& error)
+	    {
+	        logCtaEvent("query_exception", "outbound", "query_operational_state", "error", "", error.what());
+	    }
+
+	    nextCommodityRead += commodityInterval;
+	    if (nextCommodityRead <= chrono::steady_clock::now())
+	        nextCommodityRead = chrono::steady_clock::now() + commodityInterval;
 	}
-	catch (const exception& error)
-	{
-	    logCtaEvent("query_exception", "outbound", "query_operational_state", "error", "", error.what());
-	}
-        sleep(60);
+        this_thread::sleep_for(schedulerInterval);
     }
 }
