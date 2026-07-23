@@ -10,6 +10,8 @@ CTA-2045 device over the serial port configured in `main.cpp` (currently
 - `logs/cta_events.csv` records UTC timestamps for command dispatch and
   completion, link/application ACK or NAK callbacks, operational states, and
   controller lifecycle events. It is separate from the commodity `logs/log.csv`.
+  Set `CTA_EVENT_LOG_PATH` and `CTA_COMMODITY_LOG_PATH` to place both files in
+  a per-run results directory.
 - `schedule.csv` is the live command schedule. Rows use
   `time,command,argument,event_id,value,units`. Basic DR commands use the
   one-byte `argument`. Advanced Load Up uses `argument` as its duration in

@@ -14,6 +14,7 @@
 #include <cea2045/util/MSTimer.h>
 
 #include <chrono>
+#include <cstdlib>
 
 #include <iostream>
 
@@ -26,7 +27,14 @@ using namespace std;
 namespace
 {
 const char* LOG_DIRECTORY = "logs";
-const char* CSV_LOG_PATH = "logs/log.csv";
+
+const char* commodityLogPath()
+{
+	const char* configured = std::getenv("CTA_COMMODITY_LOG_PATH");
+	return configured != NULL && configured[0] != '\0'
+		? configured
+		: "logs/log.csv";
+}
 
 void ensureLogDirectoryExists()
 {
@@ -251,10 +259,11 @@ void UCMImpl::processDeviceInfoResponse(cea2045::cea2045DeviceInfoResponse* mess
 void UCMImpl::processCommodityResponse(cea2045::cea2045CommodityResponse* message)
 {
 	LOG(INFO) << "commodity response received.  count: " << message->getCommodityDataCount();
-	ofstream out(CSV_LOG_PATH, ios_base::out | ios_base::app);
+	const char* csvLogPath = commodityLogPath();
+	ofstream out(csvLogPath, ios_base::out | ios_base::app);
 	if (!out.is_open())
 	{
-		LOG(ERROR) << "failed to open CSV log: " << CSV_LOG_PATH;
+		LOG(ERROR) << "failed to open CSV log: " << csvLogPath;
 	}
 
 	int count = message->getCommodityDataCount();
@@ -340,7 +349,8 @@ void UCMImpl::processNakReceived(cea2045::LinkLayerNakCode nak, cea2045::Message
 
 void UCMImpl::processOperationalStateReceived(cea2045::cea2045Basic *message)
 {
-	ofstream out(CSV_LOG_PATH, ios_base::out | ios_base::app);
+	const char* csvLogPath = commodityLogPath();
+	ofstream out(csvLogPath, ios_base::out | ios_base::app);
 	LOG(INFO) << "operational state received: " << (int)message->opCode2;
 	logCtaEvent(
 		"operational_state",
@@ -350,7 +360,7 @@ void UCMImpl::processOperationalStateReceived(cea2045::cea2045Basic *message)
 		std::to_string(static_cast<int>(message->opCode2)));
 	if (!out.is_open())
 	{
-		LOG(ERROR) << "failed to open CSV log: " << CSV_LOG_PATH;
+		LOG(ERROR) << "failed to open CSV log: " << csvLogPath;
 	}
 	else
 	{

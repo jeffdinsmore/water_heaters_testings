@@ -1,6 +1,7 @@
 #include "CtaEventLog.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -11,8 +12,15 @@
 namespace
 {
 const char* LOG_DIRECTORY = "logs";
-const char* EVENT_LOG_PATH = "logs/cta_events.csv";
 std::mutex eventLogMutex;
+
+const char* eventLogPath()
+{
+    const char* configured = std::getenv("CTA_EVENT_LOG_PATH");
+    return configured != NULL && configured[0] != '\0'
+        ? configured
+        : "logs/cta_events.csv";
+}
 
 std::string csvEscape(const std::string& value)
 {
@@ -64,11 +72,12 @@ void logCtaEvent(
     std::lock_guard<std::mutex> lock(eventLogMutex);
     mkdir(LOG_DIRECTORY, 0755);
 
-    std::ifstream existing(EVENT_LOG_PATH, std::ios::binary | std::ios::ate);
+    const char* path = eventLogPath();
+    std::ifstream existing(path, std::ios::binary | std::ios::ate);
     const bool needsHeader = !existing.is_open() || existing.tellg() == 0;
     existing.close();
 
-    std::ofstream output(EVENT_LOG_PATH, std::ios_base::out | std::ios_base::app);
+    std::ofstream output(path, std::ios_base::out | std::ios_base::app);
     if (!output.is_open())
         return;
     if (needsHeader)
