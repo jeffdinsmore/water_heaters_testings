@@ -197,6 +197,29 @@ const char* commodityCodeName(unsigned char code)
 		return "Reserved commodity code";
 	}
 }
+
+const char* operationalStateName(unsigned char code)
+{
+	switch (code)
+	{
+	case 0: return "Idle Normal";
+	case 1: return "Running Normal";
+	case 2: return "Running Curtailed";
+	case 3: return "Running Heightened";
+	case 4: return "Idle Curtailed";
+	case 5: return "SGD Error Condition";
+	case 6: return "Idle Heightened";
+	case 7: return "Cycling on";
+	case 8: return "Cycling off";
+	case 9: return "Variable Following";
+	case 10: return "Variable not following";
+	case 11: return "Idle, opted out";
+	case 12: return "Running, opted out";
+	case 13: return "Running, price stream";
+	case 14: return "Idle, price stream";
+	default: return "Unknown operational state";
+	}
+}
 }
 
 UCMImpl::UCMImpl()
@@ -357,7 +380,8 @@ void UCMImpl::processOperationalStateReceived(cea2045::cea2045Basic *message)
 		"inbound",
 		"query_operational_state",
 		"received",
-		std::to_string(static_cast<int>(message->opCode2)));
+		std::to_string(static_cast<int>(message->opCode2)),
+		operationalStateName(message->opCode2));
 	if (!out.is_open())
 	{
 		LOG(ERROR) << "failed to open CSV log: " << csvLogPath;
